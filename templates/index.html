@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDDASH // service control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0f0d;
+    --panel:#13181550;
+    --panel-solid:#141a16;
+    --hair:#243029;
+    --hair-bright:#33473b;
+    --text:#cfe6d6;
+    --dim:#6f8a78;
+    --green:#3ddc84;
+    --green-glow:#3ddc8455;
+    --red:#ff5a52;
+    --red-glow:#ff5a5244;
+    --amber:#ffb454;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 20% -10%, #15211a 0, transparent 45%),
+      radial-gradient(circle at 90% 0%, #1a160f 0, transparent 40%),
+      repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 3px);
+    min-height:100vh;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:38px 20px 80px}
+
+  header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    border-bottom:1px solid var(--hair);
+    padding-bottom:18px;margin-bottom:4px;
+    gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand .dot{
+    width:11px;height:11px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 10px 2px var(--green-glow);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  h1{
+    font-size:20px;font-weight:700;letter-spacing:5px;margin:0;
+    text-transform:uppercase;
+  }
+  h1 span{color:var(--green)}
+  .sub{color:var(--dim);font-size:11px;letter-spacing:2px;text-transform:uppercase}
+  .clock{
+    text-align:right;color:var(--dim);font-size:11px;letter-spacing:1px;
+    line-height:1.7;
+  }
+  .clock b{color:var(--amber);font-weight:600}
+
+  .legend{
+    display:flex;gap:22px;color:var(--dim);font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;margin:18px 0 22px;
+  }
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:7px}
+  .led{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .led.on{background:var(--green);box-shadow:0 0 8px 1px var(--green-glow)}
+  .led.off{background:var(--red);box-shadow:0 0 8px 1px var(--red-glow)}
+
+  .card{
+    border:1px solid var(--hair);
+    background:linear-gradient(180deg,#161d18,#11150f);
+    border-radius:10px;margin-bottom:12px;overflow:hidden;
+    transition:border-color .2s;
+  }
+  .card:hover{border-color:var(--hair-bright)}
+  .row{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items:center;gap:16px;padding:16px 18px;
+  }
+  .idcol{display:flex;align-items:center;gap:13px;min-width:0}
+  .idcol .led{width:13px;height:13px;flex:none;transition:all .3s}
+  .idcol .led.on{animation:flicker 4s linear infinite}
+  @keyframes flicker{0%,97%,100%{opacity:1}98%{opacity:.6}}
+  .names{min-width:0}
+  .names .unit{font-weight:600;font-size:15px;letter-spacing:.5px}
+  .names .label{color:var(--dim);font-size:11px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .state{justify-self:start;font-weight:700;letter-spacing:2px;font-size:13px}
+  .state.run{color:var(--green);text-shadow:0 0 12px var(--green-glow)}
+  .state.stop{color:var(--red);text-shadow:0 0 12px var(--red-glow)}
+  .state .enb{display:block;font-size:9px;font-weight:500;letter-spacing:1px;color:var(--dim);text-shadow:none;margin-top:2px}
+
+  .controls{display:flex;gap:8px;align-items:center}
+  button{
+    font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1.5px;
+    text-transform:uppercase;cursor:pointer;
+    background:transparent;color:var(--text);
+    border:1px solid var(--hair-bright);border-radius:6px;
+    padding:8px 12px;transition:all .14s;
+  }
+  button:hover{border-color:var(--text);background:#ffffff08}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.start:hover{border-color:var(--green);color:var(--green);box-shadow:0 0 12px var(--green-glow)}
+  button.stop:hover{border-color:var(--red);color:var(--red);box-shadow:0 0 12px var(--red-glow)}
+  button.expand{padding:8px 10px;color:var(--dim)}
+  button.expand .chev{display:inline-block;transition:transform .2s}
+  button.expand.open .chev{transform:rotate(90deg)}
+
+  .drawer{
+    max-height:0;overflow:hidden;transition:max-height .28s ease;
+    border-top:1px solid transparent;
+  }
+  .drawer.open{max-height:520px;border-top-color:var(--hair)}
+  pre{
+    margin:0;padding:16px 18px;font-size:12px;line-height:1.55;
+    color:#a9c6b3;background:#0a0d0b;white-space:pre-wrap;word-break:break-word;
+    max-height:480px;overflow:auto;
+  }
+  pre .hl-active{color:var(--green)}
+  pre .hl-dead{color:var(--red)}
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-solid);border:1px solid var(--hair-bright);
+    color:var(--text);padding:11px 18px;border-radius:8px;font-size:12px;
+    letter-spacing:.5px;opacity:0;pointer-events:none;transition:all .25s;z-index:9;
+    box-shadow:0 8px 30px #0008;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{border-color:var(--red);color:var(--red)}
+  .spinner{
+    width:13px;height:13px;border:2px solid var(--hair-bright);
+    border-top-color:var(--green);border-radius:50%;display:inline-block;
+    animation:spin .7s linear infinite;vertical-align:-2px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  footer{color:var(--dim);font-size:11px;letter-spacing:1px;text-align:center;margin-top:34px;opacity:.7}
+  footer code{color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>SD<span>DASH</span></h1>
+        <div class="sub">systemd service control</div>
+      </div>
+    </div>
+    <div class="clock">
+      <div id="now">--:--:--</div>
+      <div>refresh <b id="next">4</b>s</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <i><span class="led on"></span> running</i>
+    <i><span class="led off"></span> inactive</i>
+    <i style="margin-left:auto;color:var(--amber)">private network only</i>
+  </div>
+
+  <div id="list"></div>
+
+  <footer>
+    edit the service list in <code>app.py</code> &nbsp;//&nbsp; keep this bound to your tailnet, not the public internet
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const list = document.getElementById('list');
+const toastEl = document.getElementById('toast');
+const open = new Set();          // services whose drawer is expanded
+let busy = new Set();            // services with an in-flight action
+const REFRESH = 4;
+let countdown = REFRESH;
+
+function toast(msg, isErr){
+  toastEl.textContent = msg;
+  toastEl.classList.toggle('err', !!isErr);
+  toastEl.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>toastEl.classList.remove('show'), 2600);
+}
+
+function highlight(text){
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(active \(running\))/g,'<span class="hl-active">$1</span>')
+    .replace(/(inactive \(dead\)|failed)/g,'<span class="hl-dead">$1</span>');
+}
+
+function render(services){
+  list.innerHTML = '';
+  for(const s of services){
+    const card = document.createElement('div');
+    card.className = 'card';
+    const isOpen = open.has(s.name);
+    const working = busy.has(s.name);
+    card.innerHTML = `
+      <div class="row">
+        <div class="idcol">
+          <span class="led ${s.active?'on':'off'}"></span>
+          <div class="names">
+            <div class="unit">${s.name}</div>
+            <div class="label">${s.label}</div>
+          </div>
+        </div>
+        <div class="state ${s.active?'run':'stop'}">
+          ${working?'<span class="spinner"></span>':(s.active?'RUNNING':'INACTIVE')}
+          <span class="enb">${s.enabled}</span>
+        </div>
+        <div class="controls">
+          <button class="start" ${s.active||working?'disabled':''} data-act="start" data-svc="${s.name}">start</button>
+          <button class="stop"  ${!s.active||working?'disabled':''} data-act="stop"  data-svc="${s.name}">stop</button>
+          <button ${working?'disabled':''} data-act="restart" data-svc="${s.name}">restart</button>
+          <button class="expand ${isOpen?'open':''}" data-exp="${s.name}"><span class="chev">&#9656;</span></button>
+        </div>
+      </div>
+      <div class="drawer ${isOpen?'open':''}" id="drawer-${s.name}">
+        <pre id="pre-${s.name}">${isOpen?'loading…':''}</pre>
+      </div>`;
+    list.appendChild(card);
+    if(isOpen) loadStatus(s.name);
+  }
+}
+
+async function refresh(){
+  try{
+    const r = await fetch('/api/services');
+    render(await r.json());
+  }catch(e){ toast('cannot reach server', true); }
+}
+
+async function loadStatus(svc){
+  try{
+    const r = await fetch('/api/status/'+svc);
+    const d = await r.json();
+    const pre = document.getElementById('pre-'+svc);
+    if(pre) pre.innerHTML = highlight(d.text || '(no output)');
+  }catch(e){}
+}
+
+async function doAction(svc, act){
+  busy.add(svc); refresh();
+  try{
+    const r = await fetch(`/api/action/${svc}/${act}`, {
+      method:'POST',
+      headers:{'X-Requested-With':'sddash'}
+    });
+    const d = await r.json();
+    if(d.ok){ toast(`${svc}: ${act} ok`); }
+    else { toast(`${svc}: ${act} failed${d.text?' — '+d.text.trim().split('\n')[0]:''}`, true); }
+  }catch(e){ toast(`${svc}: request failed`, true); }
+  busy.delete(svc);
+  setTimeout(refresh, 400);          // give systemd a moment to settle
+}
+
+list.addEventListener('click', e=>{
+  const b = e.target.closest('button');
+  if(!b) return;
+  if(b.dataset.exp){
+    const svc = b.dataset.exp;
+    if(open.has(svc)) open.delete(svc); else open.add(svc);
+    refresh();
+  } else if(b.dataset.act){
+    doAction(b.dataset.svc, b.dataset.act);
+  }
+});
+
+setInterval(()=>{
+  document.getElementById('now').textContent =
+    new Date().toLocaleTimeString([], {hour12:false});
+  countdown--;
+  if(countdown<=0){ countdown = REFRESH; refresh(); }
+  document.getElementById('next').textContent = countdown;
+}, 1000);
+
+refresh();
+</script>
+</body>
+</html>
